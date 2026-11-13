@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Новая кампания · Keitaro wrapper</title>
+<style>
+  :root { --line:#d9dee3; --soft:#f4f6f8; --green:#1a7f37; --yellow:#fff3cd; --grey:#8a939c; }
+  * { box-sizing: border-box; }
+  body { font:15px/1.5 -apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:#1c2430; margin:0; padding:24px; background:#fff; }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--grey); font-size: 13.5px; margin-bottom: 20px; }
+  a.back { font-size: 13.5px; color:#2563eb; text-decoration: none; }
+  .card { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:var(--grey); margin:10px 0 3px; }
+  input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; font:inherit; }
+  button { padding:7px 14px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; font:inherit; }
+  button.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .ac { position:relative; }
+  .ac-list { position:absolute; z-index:5; left:0; right:0; top:38px; background:#fff; border:1px solid var(--line); border-radius:6px; max-height:220px; overflow:auto; }
+  .ac-item { padding:7px 10px; cursor:pointer; font-size:13.5px; border-bottom:1px solid var(--soft); }
+  .ac-item:hover { background:#eef4ff; }
+  .msg { margin-top:10px; padding:8px 12px; border-radius:6px; display:none; }
+  .msg.ok { background:#e7f6ec; color:#14532d; display:block; }
+  .msg.err { background:#fde8e8; color:#7f1d1d; display:block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="/">&larr; К кампаниям</a>
+  <h1 style="margin-top:8px">Новая кампания</h1>
+  <div class="sub">Создаёт кампанию в Keitaro с двумя потоками: гео &rarr; Google и оффер</div>
+
+  <div class="card">
+    <label>Название кампании</label>
+    <input id="c-name" placeholder="имя кампании">
+    <label>Гео (коды стран через запятую)</label>
+    <input id="c-geo" placeholder="MX,AU,RO,...">
+    <label>Оффер Keitaro</label>
+    <div class="ac">
+      <input id="c-offer" placeholder="поиск по офферам с автокомплитом" autocomplete="off">
+      <div id="c-offer-list" class="ac-list" style="display:none"></div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button id="c-create" class="primary">Create</button>
+      <span id="c-offer-id" style="color:var(--grey);font-size:13px"></span>
+    </div>
+    <div id="c-msg" class="msg"></div>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const api = (path, opts) => fetch('/api' + path, {
+  headers: {'Content-Type': 'application/json'},
+  ...opts,
+}).then(async r => {
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.status);
+  return data;
+});
+
+function showMsg(text, ok) {
+  const el = $('#c-msg');
+  el.textContent = text;
+  el.className = 'msg ' + (ok ? 'ok' : 'err');
+}
+
+let offerId = null, acTimer = null;
+$('#c-offer').addEventListener('input', (e) => {
+  clearTimeout(acTimer);
+  offerId = null;
+  $('#c-offer-id').textContent = '';
+  const q = e.target.value.trim();
+  acTimer = setTimeout(async () => {
+    const list = $('#c-offer-list');
+    if (!q) { list.style.display = 'none'; return; }
+    const items = await api(`/offers/search?q=${encodeURIComponent(q)}`).catch(() => []);
+    list.innerHTML = items.map(o =>
+      `<div class="ac-item" data-id="${o.id}" data-name="${o.name.replace(/"/g,'&quot;')}">${o.id} &mdash; ${o.name}</div>`
+    ).join('');
+    list.style.display = items.length ? 'block' : 'none';
+  }, 200);
+});
+$('#c-offer-list').addEventListener('click', (e) => {
+  const item = e.target.closest('.ac-item');
+  if (!item) return;
+  offerId = parseInt(item.dataset.id, 10);
+  $('#c-offer').value = item.dataset.id + ' — ' + item.dataset.name;
+  $('#c-offer-id').textContent = 'выбран оффер ' + offerId;
+  $('#c-offer-list').style.display = 'none';
+});
+
+$('#c-create').addEventListener('click', async () => {
+  if (!offerId) return showMsg('Выберите оффер из списка автокомплита', false);
+  try {
+    const camp = await api('/campaigns', {method: 'POST', body: JSON.stringify({
+      name: $('#c-name').value.trim(),
+      geo: $('#c-geo').value.trim(),
+      offer_id: offerId,
+    })});
+    showMsg('Кампания создана в Keitaro: id ' + camp.kt_campaign_id + '. Открываю редактор...', true);
+    setTimeout(() => { location.href = '/'; }, 900);
+  } catch (e) { showMsg('Ошибка: ' + e.message, false); }
+});
+</script>
+</body>
+</html>

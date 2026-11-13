@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Кампании · Keitaro wrapper</title>
+<style>
+  :root { --line:#d9dee3; --soft:#f4f6f8; --green:#1a7f37; --yellow:#fff3cd; --grey:#8a939c; }
+  * { box-sizing: border-box; }
+  body { font:15px/1.5 -apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:#1c2430; margin:0; padding:24px; background:#fff; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--grey); font-size: 13.5px; margin-bottom: 20px; }
+  h2 { font-size: 17px; margin: 26px 0 10px; }
+  .card { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:var(--grey); margin:10px 0 3px; }
+  input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; font:inherit; }
+  button { padding:7px 14px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; font:inherit; }
+  button.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
+  button.small { padding:3px 10px; font-size:13px; }
+  .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .ac { position:relative; }
+  .ac-list { position:absolute; z-index:5; left:0; right:0; top:38px; background:#fff; border:1px solid var(--line); border-radius:6px; max-height:220px; overflow:auto; }
+  .ac-item { padding:7px 10px; cursor:pointer; font-size:13.5px; border-bottom:1px solid var(--soft); }
+  .ac-item:hover { background:#eef4ff; }
+  table { width:100%; border-collapse:collapse; font-size:14px; margin-top:6px; }
+  th { text-align:left; color:var(--grey); font-weight:600; font-size:12.5px; padding:6px 8px; border-bottom:1px solid var(--line); }
+  td { padding:7px 8px; border-bottom:1px solid var(--soft); vertical-align:top; }
+  .stream { border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:10px 0; }
+  .stream.dirty { background: var(--yellow); }
+  .stream-head { font-weight:600; }
+  .stream-head .meta { color:var(--grey); font-weight:400; font-size:12.5px; }
+  .removed td { color: var(--grey); background:#fafafa; }
+  .share { font-weight:600; color:var(--green); white-space:nowrap; }
+  .pin { cursor:pointer; border:none; background:none; font-size:15px; color:var(--grey); padding:0 4px; }
+  .pin.on { color:#d97706; }
+  .actions { margin:8px 0; display:flex; gap:8px; flex-wrap:wrap; }
+  .camp-meta { color:var(--grey); font-size:13px; margin-top:4px; }
+  .empty { color:var(--grey); padding:20px 0; text-align:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="row" style="justify-content:space-between">
+    <div>
+      <h1>Кампании</h1>
+      <div class="sub">Редактор потоков и офферов Keitaro</div>
+    </div>
+    <a href="/create.html"><button class="primary">+ Новая кампания</button></a>
+  </div>
+
+  <div id="campaigns"></div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const api = (path, opts) => fetch('/api' + path, {
+  headers: {'Content-Type': 'application/json'},
+  ...opts,
+}).then(async r => {
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.status);
+  return data;
+});
+
+// --- список кампаний и редактор ---
+let CONFIG = { kt_ui_base: '' };
+
+async function loadCampaigns() {
+  const camps = await api('/campaigns');
+  if (!camps.length) {
+    $('#campaigns').innerHTML = '<div class="empty">Пока нет кампаний. Создайте первую кнопкой «Новая кампания».</div>';
+    return;
+  }
+  $('#campaigns').innerHTML = camps.map(renderCampaign).join('');
+}
+
+function renderCampaign(c) {
+  const streams = c.streams.map(s => renderStream(s)).join('');
+  return `<div class="card">
+    <div class="row" style="justify-content:space-between">
+      <b>${c.name}</b>
+      ${c.kt_campaign_id ? `<a href="${CONFIG.kt_ui_base}/#/campaign/${c.kt_campaign_id}/main" target="_blank" style="font-size:13px">VIEW IN KT ↗</a>` : ''}
+    </div>
+    <div class="camp-meta">Keitaro id: ${c.kt_campaign_id || '—'} · гео: ${c.geo || '—'} · группа: ${c.group} · источник: ${c.source} · домен: ${c.domain}</div>
+    ${streams}
+  </div>`;
+}
+
+function streamHead(s, extra) {
+  // единый шаблон заголовка потока, как в интерфейсе заказчика:
+  // Stream: <имя> · filter by None · stream_id N · clicks today: —
+  return `<div class="stream-head">Stream: ${s.name}
+    <span class="meta">· filter by None · stream_id ${s.kt_stream_id || '—'} · clicks today: —${extra || ''}</span></div>`;
+}
+
+function renderStream(s) {
+  if (s.schema === 'redirect') {
+    // поток без офферов: только заголовок, без таблицы (видео 0:51-1:22)
+    return `<div class="stream">
+      ${streamHead(s)}
+    </div>`;
+  }
+  const rows = s.offers.map(o => `
+    <tr class="${o.state === 'removed' ? 'removed' : ''}">
+      <td>${o.kt_offer_id} — ${o.name}${o.state === 'removed' ? ' <b>(removed)</b>' : ''}</td>
+      <td class="share">${o.share}%</td>
+      <td>
+        <button class="pin ${o.pinned ? 'on' : ''}" title="закрепить вес" onclick="pinOffer(${s.id}, ${o.id}, ${o.pinned ? 'false' : 'true'})">${o.pinned ? '🔒' : '🔓'}</button>
+      </td>
+      <td>
+        ${o.state === 'active'
+          ? `<button class="small" onclick="removeOffer(${s.id}, ${o.id})">🗑 REMOVE</button>`
+          : `<button class="small" onclick="restoreOffer(${s.id}, ${o.id})">♻ BRING BACK</button>`}
+      </td>
+    </tr>`).join('');
+  return `<div class="stream ${s.dirty ? 'dirty' : ''}">
+    ${streamHead(s, s.dirty ? ' · не опубликован' : '')}
+    <div class="actions">
+      <button class="small" onclick="fetchStream(${s.id})">FETCH STREAMS FROM KT</button>
+      ${s.kt_stream_id ? `<button class="small primary" onclick="pushStream(${s.id})">PUSH TO KT</button>` : ''}
+      ${s.kt_stream_id ? `<button class="small" onclick="cancelStream(${s.id})">✕ CANCEL</button>` : ''}
+    </div>
+    <table>
+      <tr><th>Оффер</th><th>Share</th><th></th><th>Actions</th></tr>
+      ${rows}
+    </table>
+    <div class="row" style="margin-top:8px">
+      <div class="ac" style="flex:1">
+        <input id="add-${s.id}" placeholder="поиск по офферам с автокомплитом" autocomplete="off">
+        <div id="add-list-${s.id}" class="ac-list" style="display:none"></div>
+      </div>
+      <button class="small primary" onclick="addOffer(${s.id})">ADD</button>
+    </div>
+  </div>`;
+}
+
+async function refresh() { await loadCampaigns(); }
+async function fetchStream(id) { try { await api(`/streams/${id}/fetch`, {method:'POST'}); await refresh(); } catch(e){ alert(e.message); } }
+async function pushStream(id) { try { await api(`/streams/${id}/push`, {method:'POST'}); await refresh(); } catch(e){ alert(e.message); } }
+async function cancelStream(id) { try { await api(`/streams/${id}/cancel`, {method:'POST'}); await refresh(); } catch(e){ alert(e.message); } }
+async function removeOffer(sid, oid) { try { await api(`/streams/${sid}/offers/${oid}`, {method:'DELETE'}); await refresh(); } catch(e){ alert(e.message); } }
+async function restoreOffer(sid, oid) { try { await api(`/streams/${sid}/offers/${oid}/restore`, {method:'POST'}); await refresh(); } catch(e){ alert(e.message); } }
+async function pinOffer(sid, oid, pinned) { try { await api(`/streams/${sid}/offers/${oid}/pin`, {method:'POST', body: JSON.stringify({pinned})}); await refresh(); } catch(e){ alert(e.message); } }
+
+// автокомплит в строке ADD каждого потока
+let acTimer = null;
+document.addEventListener('input', (e) => {
+  const m = e.target.id && e.target.id.match(/^add-(\d+)$/);
+  if (!m) return;
+  const sid = m[1];
+  clearTimeout(acTimer);
+  setTimeout(async () => {
+    const q = e.target.value.trim();
+    const list = document.getElementById('add-list-' + sid);
+    if (!q) { list.style.display = 'none'; return; }
+    const items = await api(`/offers/search?q=${encodeURIComponent(q)}`).catch(() => []);
+    list.innerHTML = items.map(o => `<div class="ac-item" data-id="${o.id}" data-name="${o.name.replace(/"/g,'&quot;')}">${o.id} &mdash; ${o.name}</div>`).join('');
+    list.style.display = items.length ? 'block' : 'none';
+  }, 200);
+});
+document.addEventListener('click', (e) => {
+  const item = e.target.closest('.ac-item');
+  if (!item) return;
+  const list = item.parentElement;
+  const sid = list.id.match(/^add-list-(\d+)$/);
+  if (sid) {
+    const input = document.getElementById('add-' + sid[1]);
+    input.value = item.dataset.id + ' — ' + item.dataset.name;
+    input.dataset.offerId = item.dataset.id;
+  }
+  list.style.display = 'none';
+});
+async function addOffer(sid) {
+  const input = document.getElementById('add-' + sid);
+  const oid = parseInt(input.dataset.offerId || input.value.trim(), 10);
+  if (!oid) return alert('Выберите оффер из списка');
+  try { await api(`/streams/${sid}/offers`, {method:'POST', body: JSON.stringify({offer_id: oid})}); await refresh(); }
+  catch(e){ alert(e.message); }
+}
+
+loadCampaigns().catch(e => $('#campaigns').textContent = 'Не удалось загрузить кампании: ' + e.message);
+fetch('/api/config').then(r => r.json()).then(cfg => { CONFIG = cfg; });
+</script>
+</body>
+</html>

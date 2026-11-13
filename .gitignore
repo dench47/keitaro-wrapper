@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.db
+.env
+openapi.json
+filters.json
+server.log
+.env.local-backup
+.keitaro_key
+.idea/
