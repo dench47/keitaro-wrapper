@@ -5,49 +5,139 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Кампании · Keitaro wrapper</title>
 <style>
-  :root { --line:#d9dee3; --soft:#f4f6f8; --green:#1a7f37; --yellow:#fff3cd; --grey:#8a939c; }
+  :root {
+    --page:#f3f6f4; --card:#ffffff; --line:#dde4df; --line-soft:#e9efeb;
+    --green:#1e9e52; --green-deep:#136c37; --green-soft:#e6f5ec; --green-line:#bfe3cf; --green-ink:#0f5c31;
+    --ink:#1b2420; --grey:#68716b; --grey-soft:#8d968f;
+    --yellow:#fff5d3; --yellow-line:#e8d69e;
+    --shadow:0 1px 2px rgba(23,38,30,.05), 0 6px 18px rgba(23,38,30,.06);
+    --r:12px; --rs:8px;
+    --mono:ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace;
+  }
   * { box-sizing: border-box; }
-  body { font:15px/1.5 -apple-system,"Segoe UI",Roboto,Arial,sans-serif; color:#1c2430; margin:0; padding:24px; background:#fff; }
+  body {
+    font:15px/1.55 "Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+    color:var(--ink); background:var(--page); margin:0; padding:28px 24px 48px;
+  }
+  ::selection { background:#cdebda; }
   .wrap { max-width: 960px; margin: 0 auto; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .sub { color: var(--grey); font-size: 13.5px; margin-bottom: 20px; }
-  h2 { font-size: 17px; margin: 26px 0 10px; }
-  .card { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin-bottom:14px; }
-  label { display:block; font-size:13px; color:var(--grey); margin:10px 0 3px; }
-  input { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; font:inherit; }
-  button { padding:7px 14px; border:1px solid var(--line); border-radius:6px; background:#fff; cursor:pointer; font:inherit; }
-  button.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
-  button.small { padding:3px 10px; font-size:13px; }
+
+  /* шапка */
+  .topbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:22px; }
+  .brand { display:flex; align-items:center; gap:14px; }
+  .logo {
+    width:42px; height:42px; border-radius:12px; flex:none; display:grid; place-items:center;
+    background:linear-gradient(155deg,#2cb267,#178a45); color:#fff; font-weight:800; font-size:20px;
+    box-shadow:0 3px 8px rgba(19,110,56,.32), inset 0 1px 0 rgba(255,255,255,.28);
+  }
+  h1 { font-family:"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif; font-size:21px; font-weight:650; letter-spacing:-.01em; margin:0; }
+  .sub { color:var(--grey); font-size:13.5px; margin-top:1px; }
+  a { color:var(--green); text-decoration:none; }
+
+  /* кнопки */
+  button {
+    font:inherit; font-size:13.5px; padding:7px 14px; border-radius:var(--rs);
+    border:1px solid var(--line); background:#fff; color:var(--ink); cursor:pointer;
+    transition:background .15s ease, border-color .15s ease, box-shadow .15s ease, opacity .15s ease, filter .15s ease;
+  }
+  button:hover { background:#f3f7f4; border-color:#c7d2cb; }
+  button:active { transform:translateY(1px); }
+  button:focus-visible, a:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
+  button.primary {
+    background:linear-gradient(180deg,#26a75f,#1c8c4b); border-color:#178a45; color:#fff; font-weight:600;
+    box-shadow:0 1px 2px rgba(17,105,54,.3), inset 0 1px 0 rgba(255,255,255,.22);
+  }
+  button.primary:hover { background:linear-gradient(180deg,#1f9a56,#167a40); border-color:var(--green-deep); }
+  button.small { padding:4px 11px; font-size:12px; font-weight:600; letter-spacing:.02em; }
+
   .row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); padding:18px 20px; margin-bottom:16px; }
+  .card > .row > b { font-size:16px; letter-spacing:-.01em; }
+  .card a { font-size:12.5px; font-weight:600; }
+  .card a:hover { text-decoration:underline; }
+  .camp-meta { color:var(--grey-soft); font-family:var(--mono); font-size:11.5px; margin-top:6px; }
+
+  /* потоки */
+  .stream {
+    border:1px solid var(--line); border-radius:10px; background:#fbfdfc; padding:12px 14px; margin:12px 0 0;
+    transition:background .2s ease, border-color .2s ease, box-shadow .2s ease;
+  }
+  .stream.dirty { background:var(--yellow); border-color:var(--yellow-line); box-shadow:inset 3px 0 0 #e9b41f; }
+  .stream-head { font-weight:650; font-size:14.5px; letter-spacing:-.005em; }
+  .stream-head .meta { color:var(--grey-soft); font-weight:400; font-size:11.5px; font-family:var(--mono); }
+  .actions { margin:10px 0 2px; display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* таблица офферов */
+  table { width:100%; border-collapse:collapse; font-size:14px; margin-top:8px; }
+  th { text-align:left; text-transform:uppercase; letter-spacing:.06em; font-size:10.5px; font-weight:650; color:var(--grey-soft); padding:6px 10px; border-bottom:1px solid var(--line); }
+  td { padding:8px 10px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+  tr:last-child td { border-bottom:none; }
+  tr:not(.removed):hover td { background:rgba(246,249,247,.7); }
+  .share { font-weight:700; color:var(--green); white-space:nowrap; font-family:var(--mono); font-size:13.5px; font-variant-numeric:tabular-nums; }
+  .removed td { color:var(--grey-soft); background:#f7f9f8; }
+  .removed b {
+    font-weight:600; font-size:10px; color:#98a19a; background:#eef2ef; border:1px solid #e2e8e4;
+    padding:1px 8px; border-radius:999px; letter-spacing:.06em; margin-left:6px; vertical-align:1px;
+  }
+
+  /* пин: булавка вместо замка (старые глифы скрыты, рисуем через CSS) */
+  .pin { border:none; background:none; padding:2px 5px; font-size:0; border-radius:6px; cursor:pointer; }
+  .pin::before { content:"📌"; font-size:15.5px; line-height:1.25; }
+  .pin:not(.on) { filter:grayscale(1); opacity:.35; }
+  .pin:not(.on):hover { filter:grayscale(.5); opacity:.7; }
+  .pin:hover, .pin:active { background:none; border-color:transparent; transform:none; }
+  .pin.on { opacity:1; }
+  .pin.on::before { filter:drop-shadow(0 1px 1px rgba(180,116,12,.45)); }
+
+  label { display:block; font-size:13px; color:var(--grey); margin:10px 0 3px; }
+  input {
+    width:100%; padding:8px 12px; border:1px solid var(--line); border-radius:var(--rs);
+    font:inherit; font-size:14px; color:var(--ink); background:#fff;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input::placeholder { color:#a9b2ab; }
+  input:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px rgba(30,158,82,.14); }
+
+  /* автокомплит */
   .ac { position:relative; }
-  .ac-list { position:absolute; z-index:5; left:0; right:0; top:38px; background:#fff; border:1px solid var(--line); border-radius:6px; max-height:220px; overflow:auto; }
-  .ac-item { padding:7px 10px; cursor:pointer; font-size:13.5px; border-bottom:1px solid var(--soft); }
-  .ac-item:hover { background:#eef4ff; }
-  table { width:100%; border-collapse:collapse; font-size:14px; margin-top:6px; }
-  th { text-align:left; color:var(--grey); font-weight:600; font-size:12.5px; padding:6px 8px; border-bottom:1px solid var(--line); }
-  td { padding:7px 8px; border-bottom:1px solid var(--soft); vertical-align:top; }
-  .stream { border:1px solid var(--line); border-radius:10px; padding:10px 14px; margin:10px 0; }
-  .stream.dirty { background: var(--yellow); }
-  .stream-head { font-weight:600; }
-  .stream-head .meta { color:var(--grey); font-weight:400; font-size:12.5px; }
-  .removed td { color: var(--grey); background:#fafafa; }
-  .share { font-weight:600; color:var(--green); white-space:nowrap; }
-  .pin { cursor:pointer; border:none; background:none; font-size:15px; color:var(--grey); padding:0 4px; }
-  .pin.on { color:#d97706; }
-  .actions { margin:8px 0; display:flex; gap:8px; flex-wrap:wrap; }
-  .camp-meta { color:var(--grey); font-size:13px; margin-top:4px; }
-  .empty { color:var(--grey); padding:20px 0; text-align:center; }
+  .ac-list {
+    position:absolute; z-index:20; left:0; right:0; top:calc(100% + 5px);
+    background:#fff; border:1px solid var(--line); border-radius:10px;
+    box-shadow:0 10px 28px rgba(23,38,30,.14); max-height:220px; overflow:auto; padding:4px;
+  }
+  .ac-item { padding:7px 10px; cursor:pointer; font-size:13.5px; border-radius:6px; }
+  .ac-item:hover { background:var(--green-soft); }
+
+  .empty {
+    color:var(--grey); padding:38px 20px; text-align:center; font-size:14px;
+    border:1.5px dashed var(--line); border-radius:var(--r); background:rgba(255,255,255,.55);
+  }
+
+  @media (max-width:640px) {
+    body { padding:16px 12px 32px; }
+    .card { padding:14px; }
+    .stream { padding:10px 12px; }
+    table { display:block; overflow-x:auto; }
+    th, td { white-space:nowrap; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    * { transition:none !important; animation:none !important; }
+    button:active { transform:none; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="row" style="justify-content:space-between">
-    <div>
-      <h1>Кампании</h1>
-      <div class="sub">Редактор потоков и офферов Keitaro</div>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">K</span>
+      <div>
+        <h1>Кампании</h1>
+        <div class="sub">Редактор потоков и офферов Keitaro</div>
+      </div>
     </div>
     <a href="/create.html"><button class="primary">+ Новая кампания</button></a>
-  </div>
+  </header>
 
   <div id="campaigns"></div>
 </div>
